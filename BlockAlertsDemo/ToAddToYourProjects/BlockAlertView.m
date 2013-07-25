@@ -163,6 +163,9 @@ static UIFont *buttonFont = nil;
             [self setupDisplay];
         
         _vignetteBackground = NO;
+        _animationStyle = BlockAlertViewAnimationStyleFromTop;
+        _animationDuration = 0.4;
+        _buttonLineBreakMode = NSLineBreakByClipping;
     }
     
     return self;
@@ -230,6 +233,7 @@ static UIFont *buttonFont = nil;
         
         CGFloat maxHalfWidth = floorf((_view.bounds.size.width-kAlertViewBorder*3)*0.5);
         CGFloat width = _view.bounds.size.width-kAlertViewBorder*2;
+        CGFloat height = kAlertButtonHeight;
         CGFloat xOffset = kAlertViewBorder;
         if (isSecondButton)
         {
@@ -239,15 +243,25 @@ static UIFont *buttonFont = nil;
         }
         else if (i + 1 < _blocks.count)
         {
+            CGSize size;
+            CGFloat maxWidth = _view.bounds.size.width-kAlertViewBorder*2;
             // In this case there's another button.
             // Let's check if they fit on the same line.
-            CGSize size = [title sizeWithFont:buttonFont 
+            if (self.buttonLineBreakMode == NSLineBreakByClipping) {
+                size = [title sizeWithFont:buttonFont
                                   minFontSize:10 
                                actualFontSize:nil
-                                     forWidth:_view.bounds.size.width-kAlertViewBorder*2 
+                                     forWidth:maxWidth
                                 lineBreakMode:NSLineBreakByClipping];
+            }
+            else {
+                CGSize maxSize = CGSizeMake(maxWidth, kAlertButtonHeight*3);
+                size = [title sizeWithFont:buttonFont constrainedToSize:maxSize lineBreakMode:self.buttonLineBreakMode];
+                size.height += (NeedsLandscapePhoneTweaks ? 1 : 12);
+                height = MAX(size.height,kAlertButtonHeight);
+            }
             
-            if (size.width < maxHalfWidth - kAlertViewBorder)
+            if ((size.width < maxHalfWidth - kAlertViewBorder) && (self.buttonLineBreakMode == NSLineBreakByClipping))
             {
                 // It might fit. Check the next Button
                 NSArray *block2 = [_blocks objectAtIndex:i+1];
@@ -268,12 +282,21 @@ static UIFont *buttonFont = nil;
         }
         else if (_blocks.count  == 1)
         {
-            // In this case this is the ony button. We'll size according to the text
-            CGSize size = [title sizeWithFont:buttonFont
-                                  minFontSize:10
-                               actualFontSize:nil
-                                     forWidth:_view.bounds.size.width-kAlertViewBorder*2
-                                lineBreakMode:NSLineBreakByClipping];
+            CGSize size;
+            CGFloat maxWidth = _view.bounds.size.width-kAlertViewBorder*2;
+            if (self.buttonLineBreakMode == NSLineBreakByClipping) {
+                // In this case this is the ony button. We'll size according to the text
+                size = [title sizeWithFont:buttonFont
+                                      minFontSize:10
+                                   actualFontSize:nil
+                                         forWidth:_view.bounds.size.width-kAlertViewBorder*2
+                                    lineBreakMode:NSLineBreakByClipping];
+            }
+            else {
+                CGSize maxSize = CGSizeMake(maxWidth, kAlertButtonHeight*3);
+                size = [title sizeWithFont:buttonFont constrainedToSize:maxSize lineBreakMode:self.buttonLineBreakMode];
+                height = MAX(size.height,kAlertButtonHeight);
+            }
             
             size.width = MAX(size.width, 80);
             if (size.width + 2 * kAlertViewBorder < width)
@@ -284,8 +307,9 @@ static UIFont *buttonFont = nil;
         }
         
         UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
-        button.frame = CGRectMake(xOffset, _height, width, kAlertButtonHeight);
+        button.frame = CGRectMake(xOffset, _height, width, height);
         button.titleLabel.font = buttonFont;
+        button.titleLabel.lineBreakMode = self.buttonLineBreakMode;
         if (IOS_LESS_THAN_6) {
 #pragma clan diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -317,7 +341,7 @@ static UIFont *buttonFont = nil;
         [_view addSubview:button];
         
         if (!isSecondButton)
-            _height += kAlertButtonHeight + kAlertViewBorder;
+            _height += height + kAlertViewBorder;
         
         index++;
     }
@@ -370,28 +394,48 @@ static UIFont *buttonFont = nil;
     center.y = floorf([BlockBackground sharedInstance].bounds.size.height * 0.5) + kAlertViewBounce;
     
     _cancelBounce = NO;
+    if (_animationStyle == BlockAlertViewAnimationStyleFromTop) {
+        [UIView animateWithDuration:_animationDuration
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+                             [BlockBackground sharedInstance].alpha = 1.0f;
+                             _view.center = center;
+                         } 
+                         completion:^(BOOL finished) {
+                             if (_cancelBounce) return;
+                             
+                             [UIView animateWithDuration:0.1
+                                                   delay:0.0
+                                                 options:0
+                                              animations:^{
+                                                  center.y -= kAlertViewBounce;
+                                                  _view.center = center;
+                                              } 
+                                              completion:^(BOOL finished) {
+                                                  [[NSNotificationCenter defaultCenter] postNotificationName:@"AlertViewFinishedAnimations" object:self];
+                                              }];
+                         }];
+    }
+    if (_animationStyle == BlockAlertViewAnimationStyleFade) {
+        _view.center = center;
+        _view.alpha = 0.0;
+        [UIView animateWithDuration:_animationDuration
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseInOut
+                         animations:^{
+                             _view.alpha = 1.0;
+                             [BlockBackground sharedInstance].alpha = 1.0f;
+                         }
+                         completion:^(BOOL finished) {
+                             [[NSNotificationCenter defaultCenter] postNotificationName:@"AlertViewFinishedAnimations" object:self];
+                         }];
+    }
     
-    [UIView animateWithDuration:0.4
-                          delay:0.0
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-                         [BlockBackground sharedInstance].alpha = 1.0f;
-                         _view.center = center;
-                     } 
-                     completion:^(BOOL finished) {
-                         if (_cancelBounce) return;
-                         
-                         [UIView animateWithDuration:0.1
-                                               delay:0.0
-                                             options:0
-                                          animations:^{
-                                              center.y -= kAlertViewBounce;
-                                              _view.center = center;
-                                          } 
-                                          completion:^(BOOL finished) {
-                                              [[NSNotificationCenter defaultCenter] postNotificationName:@"AlertViewFinishedAnimations" object:self];
-                                          }];
-                     }];
+    else // if (_animationStyle == BlockAlertViewAnimationStyleFromNone)
+    {
+        _view.center = center;
+    }
     
     [self retain];
 }
@@ -411,7 +455,7 @@ static UIFont *buttonFont = nil;
         }
     }
     
-    if (animated)
+    if (animated && (_animationStyle == BlockAlertViewAnimationStyleFromTop))
     {
         [UIView animateWithDuration:0.1
                               delay:0.0
@@ -422,7 +466,7 @@ static UIFont *buttonFont = nil;
                              _view.center = center;
                          } 
                          completion:^(BOOL finished) {
-                             [UIView animateWithDuration:0.4
+                             [UIView animateWithDuration:_animationDuration
                                                    delay:0.0 
                                                  options:UIViewAnimationOptionCurveEaseIn
                                               animations:^{
@@ -437,6 +481,21 @@ static UIFont *buttonFont = nil;
                                                   [self autorelease];
                                               }];
                          }];
+    }
+    else if (animated && (_animationStyle == BlockAlertViewAnimationStyleFade))
+    {
+        [UIView animateWithDuration:_animationDuration
+                           delay:0.0
+                         options:UIViewAnimationOptionCurveEaseOut
+                      animations:^{
+                          _view.alpha = 0.0;
+                          [[BlockBackground sharedInstance] reduceAlphaIfEmpty];
+                      }
+                      completion:^(BOOL finished) {
+                          [[BlockBackground sharedInstance] removeView:_view];
+                          [_view release]; _view = nil;
+                          [self autorelease];
+                      }];
     }
     else
     {

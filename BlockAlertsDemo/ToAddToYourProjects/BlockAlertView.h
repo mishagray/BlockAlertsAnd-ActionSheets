@@ -5,6 +5,13 @@
 
 #import <UIKit/UIKit.h>
 
+typedef enum {
+    BlockAlertViewAnimationStyleFromTop,
+    BlockAlertViewAnimationStyleFade,
+    BlockAlertViewAnimationStyleFromNone
+    
+} BlockAlertViewAnimationStyle;
+
 @interface BlockAlertView : NSObject {
 @protected
     UIView *_view;
@@ -40,5 +47,8 @@
 @property (nonatomic, retain) UIImage *backgroundImage;
 @property (nonatomic, readonly) UIView *view;
 @property (nonatomic, readwrite) BOOL vignetteBackground;
+@property (nonatomic, assign) UILineBreakMode buttonLineBreakMode;
+@property (nonatomic, assign) BlockAlertViewAnimationStyle animationStyle;
+@property (nonatomic, assign) CGFloat animationDuration;
 
 @end
