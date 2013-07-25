@@ -218,6 +218,7 @@ static UIFont *buttonFont = nil;
     
     BOOL isSecondButton = NO;
     NSUInteger index = 0;
+    UIEdgeInsets buttonEdgeInsets = kAlertButtonTitleEdgeInsets;
     for (NSUInteger i = 0; i < _blocks.count; i++)
     {
         NSArray *block = [_blocks objectAtIndex:i];
@@ -244,7 +245,7 @@ static UIFont *buttonFont = nil;
         else if (i + 1 < _blocks.count)
         {
             CGSize size;
-            CGFloat maxWidth = _view.bounds.size.width-kAlertViewBorder*2;
+            CGFloat maxWidth = _view.bounds.size.width-kAlertViewBorder*2 - (buttonEdgeInsets.left + buttonEdgeInsets.right);
             // In this case there's another button.
             // Let's check if they fit on the same line.
             if (self.buttonLineBreakMode == NSLineBreakByClipping) {
@@ -260,6 +261,7 @@ static UIFont *buttonFont = nil;
                 size.height += (NeedsLandscapePhoneTweaks ? 1 : 12);
                 height = MAX(size.height,kAlertButtonHeight);
             }
+            size.width += (buttonEdgeInsets.left + buttonEdgeInsets.right);
             
             if ((size.width < maxHalfWidth - kAlertViewBorder) && (self.buttonLineBreakMode == NSLineBreakByClipping))
             {
@@ -269,9 +271,10 @@ static UIFont *buttonFont = nil;
                 size = [title2 sizeWithFont:buttonFont 
                                 minFontSize:10 
                              actualFontSize:nil
-                                   forWidth:_view.bounds.size.width-kAlertViewBorder*2 
+                                   forWidth:maxWidth
                               lineBreakMode:NSLineBreakByClipping];
                 
+                size.width += (buttonEdgeInsets.left + buttonEdgeInsets.right);
                 if (size.width < maxHalfWidth - kAlertViewBorder)
                 {
                     // They'll fit!
@@ -283,13 +286,13 @@ static UIFont *buttonFont = nil;
         else if (_blocks.count  == 1)
         {
             CGSize size;
-            CGFloat maxWidth = _view.bounds.size.width-kAlertViewBorder*2;
+            CGFloat maxWidth = _view.bounds.size.width-kAlertViewBorder*2 - (buttonEdgeInsets.left + buttonEdgeInsets.right);
             if (self.buttonLineBreakMode == NSLineBreakByClipping) {
                 // In this case this is the ony button. We'll size according to the text
                 size = [title sizeWithFont:buttonFont
                                       minFontSize:10
                                    actualFontSize:nil
-                                         forWidth:_view.bounds.size.width-kAlertViewBorder*2
+                                         forWidth:maxWidth
                                     lineBreakMode:NSLineBreakByClipping];
             }
             else {
@@ -297,7 +300,7 @@ static UIFont *buttonFont = nil;
                 size = [title sizeWithFont:buttonFont constrainedToSize:maxSize lineBreakMode:self.buttonLineBreakMode];
                 height = MAX(size.height,kAlertButtonHeight);
             }
-            
+            size.width += (buttonEdgeInsets.left + buttonEdgeInsets.right);
             size.width = MAX(size.width, 80);
             if (size.width + 2 * kAlertViewBorder < width)
             {
@@ -310,6 +313,7 @@ static UIFont *buttonFont = nil;
         button.frame = CGRectMake(xOffset, _height, width, height);
         button.titleLabel.font = buttonFont;
         button.titleLabel.lineBreakMode = self.buttonLineBreakMode;
+        button.titleEdgeInsets = buttonEdgeInsets;
         if (IOS_LESS_THAN_6) {
 #pragma clan diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"

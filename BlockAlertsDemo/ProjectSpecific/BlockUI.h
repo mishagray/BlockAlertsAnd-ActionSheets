@@ -48,6 +48,7 @@
 #define kAlertViewBounce         20
 #define kAlertViewBorder         (NeedsLandscapePhoneTweaks ? 5 : 10)
 #define kAlertButtonHeight       (NeedsLandscapePhoneTweaks ? 35 : 44)
+#define kAlertButtonTitleEdgeInsets     {0,8,0,8}
 
 
 #define kAlertViewTitleFont             [UIFont boldSystemFontOfSize:20]
